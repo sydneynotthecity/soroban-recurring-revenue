@@ -69,7 +69,7 @@ pub trait RecurringRevenueTrait {
 /// a helper function to convert from one to the other.
 fn to_account(address: Address) -> Result<AccountId, Error> {
     match address {
-        Address::Account(id: AccountId) => Ok(id),
+        Address::Account(id) => Ok(id),
         _ => Err(Error::InvalidInvoker),
     }
 }
@@ -101,7 +101,7 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
 
         // A withdrawal should never be `0`. I mean, really. At that point, why
         // even go through the trouble of setting this up?
-        if (amount * step as i128) as i128 == 0 {
+        if (amount * step as i128) == 0 {
             return Err(Error::InvalidArguments);
         }
 
@@ -130,7 +130,7 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
         }
 
         // We create a client to the token contract that we'll be able to use to
-        // make the transfer later on. This should look familiar to Quest 4.
+        // make the transfer later on.
         let token_id: BytesN<32> = e.storage().get(key).unwrap().unwrap();
         let client = token::Client::new(&e, token_id);
 
@@ -162,8 +162,7 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
         }
 
         // Some more quick math to make sure the `Latest` withdraw occurred *at
-        // least* `step` seconds ago. We don't want them draining the piggy bank
-        // all at once, after all.
+        // least* `step` seconds ago. 
         let latest: u64 = e.storage().get(StorageKey::Latest).unwrap().unwrap();
         if latest + step > e.ledger().timestamp() {
             return Err(Error::ReceiverAlreadyWithdrawn);
