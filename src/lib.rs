@@ -25,6 +25,7 @@ pub enum Error {
     PrematureFirstWithdraw = 5,
     InvalidInvoker = 6,
     InvalidArguments = 7,
+    ContractNotUpdated = 8,
 }
 
 /// We are using a `StorageKey` enum to store different types of data, but keying
@@ -62,6 +63,13 @@ pub trait RecurringRevenueTrait {
     // When `withdraw` is invoked, a transfer is made from the `Sender` asset
     // balance to the `Receiver` asset balance. No signature required!
     fn withdraw(e: Env) -> Result<(), Error>;
+
+    // When `fix_amount` is invoked, the amount that sent in a payment
+    // is updated. The current amount cannot be the new amount.
+    fn fix_amount(
+        e: Env,
+        amount: i128,          //the updated amount changed to the recurring payment
+    ) -> Result<(), Error>;
 }
 
 /// When a contract uses "Invoker" authentication, `env.invoker()` returns the
@@ -191,6 +199,40 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
         e.storage().set(StorageKey::Latest, new_latest);
 
         Ok(())
+    }
+
+    fn fix_amount(
+        e: Env,
+        amount: i128,
+    ) -> Result<(), Error> {
+
+        if amount == 0 {
+            return Err(Error::InvalidArguments)
+        } 
+
+        // Confirm that that contract already exists. You
+        // cannot modify a contract that does not exist.
+        let token_key = StorageKey::TokenId;
+        if !e.storage().has(token_key.clone()) {
+            return Err(Error::ContractNotInitialized);
+        }
+
+        // Check that the new amount does not match the current set amount.
+        let old_amount: i128 = e.storage().get(StorageKey::Amount).unwrap().unwrap();
+        if old_amount == amount {
+            return Err(Error::InvalidArguments)
+        }
+
+        // Set the Storage key amount to the new amount, fetch the amount to 
+        // check that the contract actually updated.
+        e.storage().set(StorageKey::Amount, amount);
+        let updated_amount: i128 = e.storage().get(StorageKey::Amount).unwrap().unwrap();
+        if updated_amount!=amount {
+            return Err(Error::ContractNotUpdated)
+        }
+
+        Ok(())
+
     }
 }
 
