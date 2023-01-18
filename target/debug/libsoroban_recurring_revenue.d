@@ -1,1 +1,0 @@
-/Users/szwise/Code/scratch/soroban-recurring-revenue/target/debug/libsoroban_recurring_revenue.dylib: /Users/szwise/Code/scratch/soroban-recurring-revenue/src/lib.rs /Users/szwise/Code/scratch/soroban-recurring-revenue/src/test.rs
