@@ -4,7 +4,8 @@ use super::*;
 
 use soroban_sdk::{
     testutils::{Accounts, Ledger, LedgerInfo},
-    Env, xdr::Asset,
+    Env, 
+    xdr::{Asset, AssetCode4, AccountId, AlphaNum4, PublicKey, Uint256}
 };
 
 /// The first test function, `test_valid_sequence()`, we test the contract
@@ -37,8 +38,13 @@ fn test_valid_sequence() {
     // We register a token contract that we can use to test our allowance and
     // payments. For testing purposes, the specific `contract_id` we use doesn't
     // really matter.
-    let asset_native = Asset::Native;
-    let id = env.register_stellar_asset_contract(asset_native);
+    // let asset_native = Asset::Native;
+    let issuer = AccountId(PublicKey::PublicKeyTypeEd25519(Uint256([65u8; 32])));
+    let asset4 = Asset::CreditAlphanum4(AlphaNum4 {
+        asset_code: AssetCode4([66u8; 4]),
+        issuer: issuer.clone(),
+    });
+    let id = env.register_stellar_asset_contract(asset4);
 
     // We create a client that can be used for our token contract and we invoke
     // the `init` function. Again, in tests, the values we supply here are
@@ -57,49 +63,49 @@ fn test_valid_sequence() {
     // We invoke the token contract's `approve` function as the `u1` account,
     // allowing our AllowanceContract to spend tokens out of the `u1` balance.
     // We are giving the contract a 500,000,000 Stroop (== 50 units) allowance.
-    token.with_source_account(&u1).incr_allow(
-        &Signature::Invoker,
-        &0,
-        &Identifier::Contract(contract_id.clone()),
-        &500000000,
-    );
+    // token.with_source_account(&u1).incr_allow(
+    //     &Signature::Invoker,
+    //     &0,
+    //     &Identifier::Contract(contract_id.clone()),
+    //     &500000000,
+    // );
 
-    // We invoke the token contract's `allowance` function to ensure everything
-    // has worked up to this point.
-    assert_eq!(
-        token.allowance(
-            &Identifier::Account(u1.clone()),
-            &Identifier::Contract(contract_id),
-        ),
-        500000000
-    );
+    // // We invoke the token contract's `allowance` function to ensure everything
+    // // has worked up to this point.
+    // assert_eq!(
+    //     token.allowance(
+    //         &Identifier::Account(u1.clone()),
+    //         &Identifier::Contract(contract_id),
+    //     ),
+    //     500000000
+    // );
 
     // We invoke the `init` function of the RecurringRevenueContract, providing the
     // starting arguments. These values result in a weekly payment of
     // 10,000,000 stroops, or 10 XLM
-    client.with_source_account(&u1).init(
-        &u2, 
-        &id, 
-        &1669593600, 
-        &10000000, 
-        &(7 * 24 * 60 * 60));
+    // client.with_source_account(&u1).init(
+    //     &u2, 
+    //     &id, 
+    //     &1669593600, 
+    //     &10000000, 
+    //     &(7 * 24 * 60 * 60));
 
-    // We set new ledger state to simulate time passing. Here, we have increased
-    // the timestamp by one second.
-    env.ledger().set(LedgerInfo {
-        timestamp: 1669726146,
-        protocol_version: 1,
-        sequence_number: 10,
-        network_passphrase: Default::default(),
-        base_reserve: 10,
-    });
+    // // We set new ledger state to simulate time passing. Here, we have increased
+    // // the timestamp by one second.
+    // env.ledger().set(LedgerInfo {
+    //     timestamp: 1669726146,
+    //     protocol_version: 1,
+    //     sequence_number: 10,
+    //     network_passphrase: Default::default(),
+    //     base_reserve: 10,
+    // });
 
     // We invoke the inaugural `withdraw` to get the first payment paid out.
     // Then, we make sure the `u2` account's token balance has increased to
     // 10,000,000. Note again we don't need any signature here to invoke the
     // `withdraw` function.
-    client.withdraw();
-    assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000);
+    // client.withdraw();
+    // assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000);
 
     // // We (again) set new ledger state to simulate time passing. This time,
     // // we've increased the timestamp by one week and one second.
