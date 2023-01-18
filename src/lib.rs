@@ -5,12 +5,14 @@
 /// familiar with. https://soroban.stellar.org/docs/sdks/rust-auth
 use soroban_auth::{Identifier, Signature};
 use soroban_sdk::{contracterror, contractimpl, contracttype, AccountId, Address, BytesN, Env};
+use soroban_token_spec::{TokenClient};
 
 /// The `contractimport` macro will bring in the contents of the built-in
 /// soroban token contract and generate a module we can use with it.
-mod token {
-    soroban_sdk::contractimport!(file = "./soroban_token_spec.wasm");
-}
+// mod token {
+//     // soroban_sdk::contractimport!(file = "/soroban_token_spec.wasm");
+//     soroban_sdk::contractimport!(file="./soroban_token_spec.wasm");
+// }
 
 /// An `Error` enum is used to meaningfully and concisely share error
 /// information with a contract user.
@@ -140,7 +142,7 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
         // We create a client to the token contract that we'll be able to use to
         // make the transfer later on.
         let token_id: BytesN<32> = e.storage().get(key).unwrap().unwrap();
-        let client = token::Client::new(&e, token_id);
+        let client = TokenClient::new(&e, token_id);
 
         // This is a simple check to ensure the `withdraw` function has not been
         // invoked by a contract. For our purposes, it *must* be invoked by a

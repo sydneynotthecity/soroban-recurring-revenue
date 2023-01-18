@@ -1,0 +1,3 @@
+cargo:rerun-if-changed=build/main.rs
+cargo:rustc-env=TYPENUM_BUILD_CONSTS=/Users/szwise/Code/scratch/soroban-recurring-revenue/target/debug/build/typenum-dae5b95b577df2f0/out/consts.rs
+cargo:rustc-env=TYPENUM_BUILD_OP=/Users/szwise/Code/scratch/soroban-recurring-revenue/target/debug/build/typenum-dae5b95b577df2f0/out/op.rs
