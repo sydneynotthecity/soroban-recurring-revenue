@@ -4,8 +4,7 @@ use super::*;
 
 use soroban_sdk::{
     testutils::{Accounts, Ledger, LedgerInfo},
-    Env, 
-    xdr::{Asset, AssetCode4, AccountId, AlphaNum4, PublicKey, Uint256}
+    Env, xdr::Asset,
 };
 
 /// The first test function, `test_valid_sequence()`, we test the contract
@@ -33,32 +32,45 @@ fn test_valid_sequence() {
 
     // We create two user accounts to test with, `u1` and `u2`
     let u1 = env.accounts().generate(); // `Sender` account
-    let u2 = env.accounts().generate(); // `Receiver` account
+    let u2 = env.accounts().generate_and_create(); // `Receiver` account
+
+    env.accounts().update_balance(&u1, 1_000_000_000);
 
     // We register a token contract that we can use to test our allowance and
     // payments. For testing purposes, the specific `contract_id` we use doesn't
     // really matter.
-    let issuer = u1.as_raw(); //@TODO transform u1 AccountId to xdr::AccountId
-    let asset4 = Asset::CreditAlphanum4(AlphaNum4 {
-        asset_code: AssetCode4([66u8; 4]),
-        issuer: issuer, ///This is where we need an xdr::AccountId but the above code generates an AccountId
-    });
-    let id = env.register_stellar_asset_contract(asset4);
+    // let asset_native = Asset::Native;
+
+    let id = env.register_stellar_asset_contract(Asset::Native);
+    // let id = env.register_contract_token(&BytesN::from_array(
+    //     &env,
+    //     &[
+    //         78, 52, 121, 202, 209, 66, 106, 25, 193, 181, 10, 91, 46, 213, 58, 244, 217, 115, 23,
+    //         232, 144, 71, 210, 113, 57, 46, 203, 166, 210, 20, 155, 105,
+    //     ],
+    // ));
 
     // We create a client that can be used for our token contract and we invoke
     // the `init` function. Again, in tests, the values we supply here are
     // inconsequential.
-    let token = TokenClient::new(&env, &id);
+    let token = token::Client::new(&env, &id);
+    // token.init(
+    //     &Identifier::Account(u1.clone()),
+    //     &token::TokenMetadata {
+    //         name: "USD coin".into_val(&env),
+    //         symbol: "USDC".into_val(&env),
+    //         decimals: 7,
+    //     },
+    // );
 
     // // We use the `u1` account to mint 1,000,000,000 Stroops of our token (that
     // // is equal to 100 units of the asset).
-    // @TODO: mint does not work because we are not the issuer
-    token.with_source_account(&u1).mint(
-        &Signature::Invoker,
-        &0,
-        &Identifier::Account(u1.clone()),
-        &1000000000,
-    );
+    // token.with_source_account(&u1).mint(
+    //     &Signature::Invoker,
+    //     &0,
+    //     &Identifier::Account(u1.clone()),
+    //     &1000000000,
+    // );
 
     // We invoke the token contract's `approve` function as the `u1` account,
     // allowing our AllowanceContract to spend tokens out of the `u1` balance.
@@ -138,227 +150,275 @@ fn test_valid_sequence() {
     // assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000 * 3);
 }
 
-// /// In our next test function, `test_invalid_sequence()`, we are testing the
-// /// case where things are setup in the same way, but the a second `withdraw`
-// /// invocation is made too quickly.
-// #[test]
-// #[should_panic(expected = "Status(ContractError(4))")] // We want this test to panic since it is withdrawing too quickly.
-// fn test_invalid_sequence() {
-//     // Almost everything in this test is identical to the previous one. We'll
-//     // drop a comment to let you know when things are getting interesting again.
-//     let env = Env::default();
-//     let u1 = env.accounts().generate();
-//     let u2 = env.accounts().generate();
+/// In our next test function, `test_invalid_sequence()`, we are testing the
+/// case where things are setup in the same way, but the a second `withdraw`
+/// invocation is made too quickly.
+#[test]
+#[should_panic(expected = "Status(ContractError(4))")] // We want this test to panic since it is withdrawing too quickly.
+fn test_invalid_sequence() {
+    // Almost everything in this test is identical to the previous one. We'll
+    // drop a comment to let you know when things are getting interesting again.
+    let env = Env::default();
+    let u1 = env.accounts().generate();
+    let u2 = env.accounts().generate_and_create();
 
-//     env.ledger().set(LedgerInfo {
-//         timestamp: 1669726145,
-//         protocol_version: 1,
-//         sequence_number: 10,
-//         network_passphrase: Default::default(),
-//         base_reserve: 10,
-//     });
+    env.accounts().update_balance(&u1, 1_000_000_000);
 
-//     let contract_id = env.register_contract(None, RecurringRevenueContract);
-//     let client = RecurringRevenueContractClient::new(&env, &contract_id);
+    env.ledger().set(LedgerInfo {
+        timestamp: 1669726145,
+        protocol_version: 1,
+        sequence_number: 10,
+        network_passphrase: Default::default(),
+        base_reserve: 10,
+    });
 
-//     let asset_native = Asset::Native;
-//     let id = env.register_stellar_asset_contract(asset_native);
+    let contract_id = env.register_contract(None, RecurringRevenueContract);
+    let client = RecurringRevenueContractClient::new(&env, &contract_id);
 
-//     let token = TokenClient::new(&env, &id);
+    let id = env.register_stellar_asset_contract(Asset::Native);
+    // let id = env.register_contract_token(&BytesN::from_array(
+    //     &env,
+    //     &[
+    //         78, 52, 121, 202, 209, 66, 106, 25, 193, 181, 10, 91, 46, 213, 58, 244, 217, 115, 23,
+    //         232, 144, 71, 210, 113, 57, 46, 203, 166, 210, 20, 155, 105,
+    //     ],
+    // ));
 
-//     token.with_source_account(&u1).mint(
-//         &Signature::Invoker,
-//         &0,
-//         &Identifier::Account(u1.clone()),
-//         &1000000000,
-//     );
+    let token = token::Client::new(&env, &id);
+    // token.init(
+    //     &Identifier::Account(u1.clone()),
+    //     &token::TokenMetadata {
+    //         name: "USD coin".into_val(&env),
+    //         symbol: "USDC".into_val(&env),
+    //         decimals: 7,
+    //     },
+    // );
 
-//     token.with_source_account(&u1).incr_allow(
-//         &Signature::Invoker,
-//         &0,
-//         &Identifier::Contract(contract_id.clone()),
-//         &500000000,
-//     );
+    // token.with_source_account(&u1).mint(
+    //     &Signature::Invoker,
+    //     &0,
+    //     &Identifier::Account(u1.clone()),
+    //     &1000000000,
+    // );
 
-//     assert_eq!(
-//         token.allowance(
-//             &Identifier::Account(u1.clone()),
-//             &Identifier::Contract(contract_id),
-//         ),
-//         500000000
-//     );
+    token.with_source_account(&u1).incr_allow(
+        &Signature::Invoker,
+        &0,
+        &Identifier::Contract(contract_id.clone()),
+        &500000000,
+    );
 
-//     client
-//         .with_source_account(&u1)
-//         .init(&u2, &id, &1669593600, &10000000, &(7 * 24 * 60 * 60));
+    assert_eq!(
+        token.allowance(
+            &Identifier::Account(u1.clone()),
+            &Identifier::Contract(contract_id),
+        ),
+        500000000
+    );
 
-//     env.ledger().set(LedgerInfo {
-//         timestamp: 1669726146,
-//         protocol_version: 1,
-//         sequence_number: 10,
-//         network_passphrase: Default::default(),
-//         base_reserve: 10,
-//     });
+    client
+        .with_source_account(&u1)
+        .init(&u2, &id, &1669593600, &10000000, &(7 * 24 * 60 * 60));
 
-//     client.withdraw();
-//     assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000);
+    env.ledger().set(LedgerInfo {
+        timestamp: 1669726146,
+        protocol_version: 1,
+        sequence_number: 10,
+        network_passphrase: Default::default(),
+        base_reserve: 10,
+    });
 
-//     env.ledger().set(LedgerInfo {
-//         timestamp: 1669726146 + (7 * 24 * 60 * 60) + 1,
-//         protocol_version: 1,
-//         sequence_number: 10,
-//         network_passphrase: Default::default(),
-//         base_reserve: 10,
-//     });
+    client.withdraw();
+    assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000);
 
-//     client.withdraw();
-//     assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000 * 2);
+    env.ledger().set(LedgerInfo {
+        timestamp: 1669726146 + (7 * 24 * 60 * 60) + 1,
+        protocol_version: 1,
+        sequence_number: 10,
+        network_passphrase: Default::default(),
+        base_reserve: 10,
+    });
 
-//     // Ok, stop here! This time, for our third `withdraw` invocation, we are
-//     // only adding 20 seconds to the previous invocation. Since we've set up for
-//     // weekly allowance transfers, this attempt should fail.
-//     env.ledger().set(LedgerInfo {
-//         timestamp: 1669726146 + (7 * 24 * 60 * 60) + 1 + 20,
-//         protocol_version: 1,
-//         sequence_number: 10,
-//         network_passphrase: Default::default(),
-//         base_reserve: 10,
-//     });
+    client.withdraw();
+    assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000 * 2);
 
-//     // We don't need an assertion here, since this invocation should fail and
-//     // respond with `Status(ContractError(4))`.
-//     client.withdraw();
-// }
+    // Ok, stop here! This time, for our third `withdraw` invocation, we are
+    // only adding 20 seconds to the previous invocation. Since we've set up for
+    // weekly allowance transfers, this attempt should fail.
+    env.ledger().set(LedgerInfo {
+        timestamp: 1669726146 + (7 * 24 * 60 * 60) + 1 + 20,
+        protocol_version: 1,
+        sequence_number: 10,
+        network_passphrase: Default::default(),
+        base_reserve: 10,
+    });
 
-// /// In our next test function, `test_invalid_init()`, we test to make sure that
-// /// invoking the RecurringRevenueContract `init` function with invalid arguments will
-// /// fail as expected. Specifically, we are passing `0` for the `step` value.
-// #[test]
-// #[should_panic(expected = "Status(ContractError(7))")] // We want this test to panic since we are giving an unusable argument.
-// fn test_invalid_init() {
-//     // Almost everything in this test is identical to the first one. We'll drop
-//     // a comment to let you know when things are getting interesting again.
-//     let env = Env::default();
-//     env.ledger().set(LedgerInfo {
-//         timestamp: 1669726145,
-//         protocol_version: 1,
-//         sequence_number: 10,
-//         network_passphrase: Default::default(),
-//         base_reserve: 10,
-//     });
+    // We don't need an assertion here, since this invocation should fail and
+    // respond with `Status(ContractError(4))`.
+    client.withdraw();
+}
 
-//     let u1 = env.accounts().generate();
-//     let u2 = env.accounts().generate();
+/// In our next test function, `test_invalid_init()`, we test to make sure that
+/// invoking the RecurringRevenueContract `init` function with invalid arguments will
+/// fail as expected. Specifically, we are passing `0` for the `step` value.
+#[test]
+#[should_panic(expected = "Status(ContractError(7))")] // We want this test to panic since we are giving an unusable argument.
+fn test_invalid_init() {
+    // Almost everything in this test is identical to the first one. We'll drop
+    // a comment to let you know when things are getting interesting again.
+    let env = Env::default();
+    env.ledger().set(LedgerInfo {
+        timestamp: 1669726145,
+        protocol_version: 1,
+        sequence_number: 10,
+        network_passphrase: Default::default(),
+        base_reserve: 10,
+    });
 
-//     let contract_id = env.register_contract(None, RecurringRevenueContract);
-//     let client = RecurringRevenueContractClient::new(&env, &contract_id);
+    let u1 = env.accounts().generate();
+    let u2 = env.accounts().generate_and_create();
 
-//     let asset_native = Asset::Native;
-//     let id = env.register_stellar_asset_contract(asset_native);
+    env.accounts().update_balance(&u1, 1_000_000_000);
 
-//     let token = TokenClient::new(&env, &id);
+    let contract_id = env.register_contract(None, RecurringRevenueContract);
+    let client = RecurringRevenueContractClient::new(&env, &contract_id);
 
-//     token.with_source_account(&u1).mint(
-//         &Signature::Invoker,
-//         &0,
-//         &Identifier::Account(u1.clone()),
-//         &1000000000,
-//     );
+    let id = env.register_stellar_asset_contract(Asset::Native);
+    // let id = env.register_contract_token(&BytesN::from_array(
+    //     &env,
+    //     &[
+    //         78, 52, 121, 202, 209, 66, 106, 25, 193, 181, 10, 91, 46, 213, 58, 244, 217, 115, 23,
+    //         232, 144, 71, 210, 113, 57, 46, 203, 166, 210, 20, 155, 105,
+    //     ],
+    // ));
 
-//     token.with_source_account(&u1).incr_allow(
-//         &Signature::Invoker,
-//         &0,
-//         &Identifier::Contract(contract_id.clone()),
-//         &500000000,
-//     );
+    let token = token::Client::new(&env, &id);
+    // token.init(
+    //     &Identifier::Account(u1.clone()),
+    //     &token::TokenMetadata {
+    //         name: "USD coin".into_val(&env),
+    //         symbol: "USDC".into_val(&env),
+    //         decimals: 7,
+    //     },
+    // );
 
-//     assert_eq!(
-//         token.allowance(
-//             &Identifier::Account(u1.clone()),
-//             &Identifier::Contract(contract_id),
-//         ),
-//         500000000
-//     );
+    // token.with_source_account(&u1).mint(
+    //     &Signature::Invoker,
+    //     &0,
+    //     &Identifier::Account(u1.clone()),
+    //     &1000000000,
+    // );
 
-//     // Ok, stop here! This time, when invoking `init`, we give a `0` for the
-//     // `step` field. This isn't possible because it would turn the
-//     // allowance-dripping faucet into a rusted old faucet that has been welded
-//     // shut. Also, dividing by zero is impossible. So, that's an important
-//     // consideration, too.
-//     client.with_source_account(&u1).init(
-//         &u2,        // our `receiver` account
-//         &id,        // our token contract id
-//         &1669593600, // start epoch for the payments
-//         &10000000,    // payment amount of 10XLM
-//         &0,         // 0 withdraw per second (why would you even do this?)
-//     );
+    token.with_source_account(&u1).incr_allow(
+        &Signature::Invoker,
+        &0,
+        &Identifier::Contract(contract_id.clone()),
+        &500000000,
+    );
 
-//     // Again, there's no need for an assertion here, since this invocation
-//     // should fail and respond with `Status(ContractError(7))`.
-// }
+    assert_eq!(
+        token.allowance(
+            &Identifier::Account(u1.clone()),
+            &Identifier::Contract(contract_id),
+        ),
+        500000000
+    );
 
-// /// In our final test function, `test_invalid_premature_withdrawal()`, we test to make sure that
-// /// the receiver cannot prematurely withdraw funds from the RecurringRevenueContract.
-// /// The contract will init() as expected, but the receiver will be unable to withdraw funds
-// /// because they are too early!
-// #[test]
-// #[should_panic(expected = "Status(ContractError(5))")] // We want this test to panic since we are giving an unusable argument.
-// fn test_invalid_init_withdrawal() {
-//     // Almost everything in this test is identical to the first one. We'll drop
-//     // a comment to let you know when things are getting interesting again.
-//     let env = Env::default();
-//     env.ledger().set(LedgerInfo {
-//         timestamp: 1669726145,
-//         protocol_version: 1,
-//         sequence_number: 10,
-//         network_passphrase: Default::default(),
-//         base_reserve: 10,
-//     });
+    // Ok, stop here! This time, when invoking `init`, we give a `0` for the
+    // `step` field. This isn't possible because it would turn the
+    // allowance-dripping faucet into a rusted old faucet that has been welded
+    // shut. Also, dividing by zero is impossible. So, that's an important
+    // consideration, too.
+    client.with_source_account(&u1).init(
+        &u2,        // our `receiver` account
+        &id,        // our token contract id
+        &1669593600, // start epoch for the payments
+        &10000000,    // payment amount of 10XLM
+        &0,         // 0 withdraw per second (why would you even do this?)
+    );
 
-//     let u1 = env.accounts().generate();
-//     let u2 = env.accounts().generate();
+    // Again, there's no need for an assertion here, since this invocation
+    // should fail and respond with `Status(ContractError(7))`.
+}
 
-//     let contract_id = env.register_contract(None, RecurringRevenueContract);
-//     let client = RecurringRevenueContractClient::new(&env, &contract_id);
+/// In our final test function, `test_invalid_premature_withdrawal()`, we test to make sure that
+/// the receiver cannot prematurely withdraw funds from the RecurringRevenueContract.
+/// The contract will init() as expected, but the receiver will be unable to withdraw funds
+/// because they are too early!
+#[test]
+#[should_panic(expected = "Status(ContractError(5))")] // We want this test to panic since we are giving an unusable argument.
+fn test_invalid_init_withdrawal() {
+    // Almost everything in this test is identical to the first one. We'll drop
+    // a comment to let you know when things are getting interesting again.
+    let env = Env::default();
+    env.ledger().set(LedgerInfo {
+        timestamp: 1669726145,
+        protocol_version: 1,
+        sequence_number: 10,
+        network_passphrase: Default::default(),
+        base_reserve: 10,
+    });
 
-//     let asset_native = Asset::Native;
-//     let id = env.register_stellar_asset_contract(asset_native);
+    let u1 = env.accounts().generate();
+    let u2 = env.accounts().generate_and_create();
 
-//     let token = TokenClient::new(&env, &id);
+    env.accounts().update_balance(&u1, 1_000_000_000);
 
-//     token.with_source_account(&u1).mint(
-//         &Signature::Invoker,
-//         &0,
-//         &Identifier::Account(u1.clone()),
-//         &1000000000,
-//     );
+    let contract_id = env.register_contract(None, RecurringRevenueContract);
+    let client = RecurringRevenueContractClient::new(&env, &contract_id);
 
-//     token.with_source_account(&u1).incr_allow(
-//         &Signature::Invoker,
-//         &0,
-//         &Identifier::Contract(contract_id.clone()),
-//         &500000000,
-//     );
+    let id = env.register_stellar_asset_contract(Asset::Native);
+    // let id = env.register_contract_token(&BytesN::from_array(
+    //     &env,
+    //     &[
+    //         78, 52, 121, 202, 209, 66, 106, 25, 193, 181, 10, 91, 46, 213, 58, 244, 217, 115, 23,
+    //         232, 144, 71, 210, 113, 57, 46, 203, 166, 210, 20, 155, 105,
+    //     ],
+    // ));
 
-//     assert_eq!(
-//         token.allowance(
-//             &Identifier::Account(u1.clone()),
-//             &Identifier::Contract(contract_id),
-//         ),
-//         500000000
-//     );
+    let token = token::Client::new(&env, &id);
+    // token.init(
+    //     &Identifier::Account(u1.clone()),
+    //     &token::TokenMetadata {
+    //         name: "USD coin".into_val(&env),
+    //         symbol: "USDC".into_val(&env),
+    //         decimals: 7,
+    //     },
+    // );
 
-//     // Notice that the start epoch is much further in the future
-//     client.with_source_account(&u1).init(
-//         &u2, // our `receiver` account
-//         &id, // our token contract id
-//         &1701129600,  // Future date
-//         &10000000, 
-//         &(7 * 24 * 60 * 60),  // 1 withdraw per second
-//     );
+    // token.with_source_account(&u1).mint(
+    //     &Signature::Invoker,
+    //     &0,
+    //     &Identifier::Account(u1.clone()),
+    //     &1000000000,
+    // );
 
-//     client.withdraw();
+    token.with_source_account(&u1).incr_allow(
+        &Signature::Invoker,
+        &0,
+        &Identifier::Contract(contract_id.clone()),
+        &500000000,
+    );
 
-//     // Again, there's no need for an assertion here, since this invocation
-//     // should fail and respond with `Status(ContractError(6))`.
-// }
+    assert_eq!(
+        token.allowance(
+            &Identifier::Account(u1.clone()),
+            &Identifier::Contract(contract_id),
+        ),
+        500000000
+    );
+
+    // Notice that the start epoch is much further in the future
+    client.with_source_account(&u1).init(
+        &u2, // our `receiver` account
+        &id, // our token contract id
+        &1701129600,  // Future date
+        &10000000, 
+        &(7 * 24 * 60 * 60),  // 1 withdraw per second
+    );
+
+    client.withdraw();
+
+    // Again, there's no need for an assertion here, since this invocation
+    // should fail and respond with `Status(ContractError(6))`.
+}

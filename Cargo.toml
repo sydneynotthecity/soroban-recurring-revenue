@@ -8,17 +8,19 @@ publish = false
 crate-type = ["cdylib"]
 
 [features]
-testutils = ["soroban-sdk/testutils"]
+testutils = ["soroban-sdk/testutils", "soroban-auth/testutils"]
 
 [dependencies]
-soroban-sdk = "0.4.2"
-soroban-auth = "0.4.2"
-soroban-token-spec = "0.4.2"
+# soroban-sdk = { version = "0.4.2" }
+# soroban-auth = { version = "0.4.2" }
+soroban-sdk = { git = "https://github.com/stellar/rs-soroban-sdk", rev = "6d82b5e8830fb2579aaef9fc95322ea267eae6c4" }
+soroban-auth = { git = "https://github.com/stellar/rs-soroban-sdk", rev = "6d82b5e8830fb2579aaef9fc95322ea267eae6c4" }
 
 [dev_dependencies]
-soroban-sdk = { version = "0.4.2", features = ["testutils"] }
-soroban-auth = { version = "0.4.2", features = ["testutils"] }
-soroban-token-spec = { version = "0.4.2", features = ["testutils"] }
+# soroban-sdk = { version = "0.4.2", features = ["testutils"] }
+# soroban-auth = { version = "0.4.2", features = ["testutils"] }
+soroban-sdk = { git = "https://github.com/stellar/rs-soroban-sdk", rev = "6d82b5e8830fb2579aaef9fc95322ea267eae6c4", features = ["testutils"] }
+soroban-auth = { git = "https://github.com/stellar/rs-soroban-sdk", rev = "6d82b5e8830fb2579aaef9fc95322ea267eae6c4", features = ["testutils"] }
 
 [profile.release]
 opt-level = "z"

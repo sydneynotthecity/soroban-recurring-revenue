@@ -99,7 +99,7 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
         // been invoked. Although a few different `StorageKey`s are set during
         // init, it's enough to only check for one.
         let token_key = StorageKey::TokenId;
-        if e.storage().has(token_key.clone()) {
+        if e.storage().has(&token_key) {
             return Err(Error::ContractAlreadyInitialized);
         }
 
@@ -117,16 +117,16 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
 
         // We are setting up all the data that this contract will store on the
         // ledger here. Nothing fancy here, just the same thing a few times.
-        e.storage().set(token_key, token_id);
+        e.storage().set(&token_key, &token_id);
         e.storage()
-            .set(StorageKey::Sender, to_account(e.invoker()).unwrap()); // the invoker of `init` becomes the `Sender`
-        e.storage().set(StorageKey::Receiver, receiver);
-        e.storage().set(StorageKey::StartEpoch, start_epoch);
-        e.storage().set(StorageKey::Amount, amount);
-        e.storage().set(StorageKey::Step, step);
+            .set(&StorageKey::Sender, &to_account(e.invoker()).unwrap()); // the invoker of `init` becomes the `Sender`
+        e.storage().set(&StorageKey::Receiver, &receiver);
+        e.storage().set(&StorageKey::StartEpoch, &start_epoch);
+        e.storage().set(&StorageKey::Amount, &amount);
+        e.storage().set(&StorageKey::Step, &step);
 
         // During contract init() the latest withdraw will be set as a time before the payment start time
-        e.storage().set(StorageKey::Latest, start_epoch - step);
+        e.storage().set(&StorageKey::Latest, &(start_epoch - step));
 
         Ok(())
     }
@@ -135,14 +135,14 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
         // Conversely from `init`, we want to make sure the contract *has* been
         // initialized before a withdraw can be made.
         let key = StorageKey::TokenId;
-        if !e.storage().has(key.clone()) {
+        if !e.storage().has(&key) {
             return Err(Error::ContractNotInitialized);
         }
 
         // We create a client to the token contract that we'll be able to use to
         // make the transfer later on.
-        let token_id: BytesN<32> = e.storage().get(key).unwrap().unwrap();
-        let client = TokenClient::new(&e, token_id);
+        let token_id: BytesN<32> = e.storage().get(&key).unwrap().unwrap();
+        let client = token::Client::new(&e, &token_id);
 
         // This is a simple check to ensure the `withdraw` function has not been
         // invoked by a contract. For our purposes, it *must* be invoked by a
@@ -158,22 +158,22 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
         // can ensure they are *always* the beneficiary of the withdrawal. No
         // matter who actually makes the call to the contract, the receiver
         // always receives the funds payment.
-        let receiver = e.storage().get(StorageKey::Receiver).unwrap().unwrap();
+        let receiver = e.storage().get(&StorageKey::Receiver).unwrap().unwrap();
         // Note: Technically speaking, *anybody* could invoke the `withdraw`
         // function in the contract.
 
-        let step: u64 = e.storage().get(StorageKey::Step).unwrap().unwrap();
-        let amount: i128 = e.storage().get(StorageKey::Amount).unwrap().unwrap();
+        let step: u64 = e.storage().get(&StorageKey::Step).unwrap().unwrap();
+        let amount: i128 = e.storage().get(&StorageKey::Amount).unwrap().unwrap();
 
         // Check that the Receiver is allowed to start receiving payments
-        let start_epoch: u64 = e.storage().get(StorageKey::StartEpoch).unwrap().unwrap();
+        let start_epoch: u64 = e.storage().get(&StorageKey::StartEpoch).unwrap().unwrap();
         if start_epoch > e.ledger().timestamp(){
             return Err(Error::PrematureFirstWithdraw)
         }
 
         // Some more quick math to make sure the `Latest` withdraw occurred *at
         // least* `step` seconds ago. 
-        let latest: u64 = e.storage().get(StorageKey::Latest).unwrap().unwrap();
+        let latest: u64 = e.storage().get(&StorageKey::Latest).unwrap().unwrap();
         if latest + step > e.ledger().timestamp() {
             return Err(Error::ReceiverAlreadyWithdrawn);
         }
@@ -187,7 +187,7 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
         client.xfer_from(
             &Signature::Invoker,
             &(0 as i128),
-            &Identifier::Account(e.storage().get(StorageKey::Sender).unwrap().unwrap()),
+            &Identifier::Account(e.storage().get(&StorageKey::Sender).unwrap().unwrap()),
             &Identifier::Account(receiver),
             &amount,
         );
@@ -198,7 +198,7 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
         // latest withdraw. This allows the receiver to "catch up" on any missed
         // withdrawals. 
         let new_latest = latest + step;
-        e.storage().set(StorageKey::Latest, new_latest);
+        e.storage().set(&StorageKey::Latest, &new_latest);
 
         Ok(())
     }
@@ -215,20 +215,20 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
         // Confirm that that contract already exists. You
         // cannot modify a contract that does not exist.
         let token_key = StorageKey::TokenId;
-        if !e.storage().has(token_key.clone()) {
+        if !e.storage().has(&token_key) {
             return Err(Error::ContractNotInitialized);
         }
 
         // Check that the new amount does not match the current set amount.
-        let old_amount: i128 = e.storage().get(StorageKey::Amount).unwrap().unwrap();
+        let old_amount: i128 = e.storage().get(&StorageKey::Amount).unwrap().unwrap();
         if old_amount == amount {
             return Err(Error::InvalidArguments)
         }
 
         // Set the Storage key amount to the new amount, fetch the amount to 
         // check that the contract actually updated.
-        e.storage().set(StorageKey::Amount, amount);
-        let updated_amount: i128 = e.storage().get(StorageKey::Amount).unwrap().unwrap();
+        e.storage().set(&StorageKey::Amount, &amount);
+        let updated_amount: i128 = e.storage().get(&StorageKey::Amount).unwrap().unwrap();
         if updated_amount!=amount {
             return Err(Error::ContractNotUpdated)
         }
