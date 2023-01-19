@@ -42,38 +42,13 @@ fn test_valid_sequence() {
     // We register a token contract that we can use to test our allowance and
     // payments. For testing purposes, the specific `contract_id` we use doesn't
     // really matter.
-    // let asset_native = Asset::Native;
 
     let id = env.register_stellar_asset_contract(Asset::Native);
-    // let id = env.register_contract_token(&BytesN::from_array(
-    //     &env,
-    //     &[
-    //         78, 52, 121, 202, 209, 66, 106, 25, 193, 181, 10, 91, 46, 213, 58, 244, 217, 115, 23,
-    //         232, 144, 71, 210, 113, 57, 46, 203, 166, 210, 20, 155, 105,
-    //     ],
-    // ));
 
     // We create a client that can be used for our token contract and we invoke
     // the `init` function. Again, in tests, the values we supply here are
     // inconsequential.
     let token = TokenClient::new(&env, &id);
-    // token.init(
-    //     &Identifier::Account(u1.clone()),
-    //     &token::TokenMetadata {
-    //         name: "USD coin".into_val(&env),
-    //         symbol: "USDC".into_val(&env),
-    //         decimals: 7,
-    //     },
-    // );
-
-    // // We use the `u1` account to mint 1,000,000,000 Stroops of our token (that
-    // // is equal to 100 units of the asset).
-    // token.with_source_account(&u1).mint(
-    //     &Signature::Invoker,
-    //     &0,
-    //     &Identifier::Account(u1.clone()),
-    //     &1000000000,
-    // );
 
     // We invoke the token contract's `approve` function as the `u1` account,
     // allowing our AllowanceContract to spend tokens out of the `u1` balance.
@@ -119,35 +94,35 @@ fn test_valid_sequence() {
     client.withdraw();
     assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000);
 
-    // // We (again) set new ledger state to simulate time passing. This time,
-    // // we've increased the timestamp by one week and one second.
-    // env.ledger().set(LedgerInfo {
-    //     timestamp: 1669726146 + (7 * 24 * 60 * 60) + 1,
-    //     protocol_version: 1,
-    //     sequence_number: 10,
-    //     network_passphrase: Default::default(),
-    //     base_reserve: 10,
-    // });
+    // We (again) set new ledger state to simulate time passing. This time,
+    // we've increased the timestamp by one week and one second.
+    env.ledger().set(LedgerInfo {
+        timestamp: 1669726146 + (7 * 24 * 60 * 60) + 1,
+        protocol_version: 1,
+        sequence_number: 10,
+        network_passphrase: Default::default(),
+        base_reserve: 10,
+    });
 
-    // // We invoke `withdraw` again, and check that the `u2` token balance
-    // // reflects two payment transfers.
-    // client.withdraw();
-    // assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000 * 2);
+    // We invoke `withdraw` again, and check that the `u2` token balance
+    // reflects two payment transfers.
+    client.withdraw();
+    assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000 * 2);
 
-    // // A third time, we set new ledger state to simulate time passing. Here, we
-    // // skip ahead two weeks and two seconds from the `init` invocation.
-    // env.ledger().set(LedgerInfo {
-    //     timestamp: 1669726146 + (7 * 24 * 60 * 60) + 1 + (7 * 24 * 60 * 60) + 1,
-    //     protocol_version: 1,
-    //     sequence_number: 10,
-    //     network_passphrase: Default::default(),
-    //     base_reserve: 10,
-    // });
+    // A third time, we set new ledger state to simulate time passing. Here, we
+    // skip ahead two weeks and two seconds from the `init` invocation.
+    env.ledger().set(LedgerInfo {
+        timestamp: 1669726146 + (7 * 24 * 60 * 60) + 1 + (7 * 24 * 60 * 60) + 1,
+        protocol_version: 1,
+        sequence_number: 10,
+        network_passphrase: Default::default(),
+        base_reserve: 10,
+    });
 
-    // // We invoke `withdraw` again, and check that the `u2` token balance now
-    // // reflects three payment transfers.
-    // client.withdraw();
-    // assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000 * 3);
+    // We invoke `withdraw` again, and check that the `u2` token balance now
+    // reflects three payment transfers.
+    client.withdraw();
+    assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000 * 3);
 }
 
 /// In our next test function, `test_invalid_sequence()`, we are testing the
@@ -176,30 +151,8 @@ fn test_invalid_sequence() {
     let client = RecurringRevenueContractClient::new(&env, &contract_id);
 
     let id = env.register_stellar_asset_contract(Asset::Native);
-    // let id = env.register_contract_token(&BytesN::from_array(
-    //     &env,
-    //     &[
-    //         78, 52, 121, 202, 209, 66, 106, 25, 193, 181, 10, 91, 46, 213, 58, 244, 217, 115, 23,
-    //         232, 144, 71, 210, 113, 57, 46, 203, 166, 210, 20, 155, 105,
-    //     ],
-    // ));
 
     let token = TokenClient::new(&env, &id);
-    // token.init(
-    //     &Identifier::Account(u1.clone()),
-    //     &token::TokenMetadata {
-    //         name: "USD coin".into_val(&env),
-    //         symbol: "USDC".into_val(&env),
-    //         decimals: 7,
-    //     },
-    // );
-
-    // token.with_source_account(&u1).mint(
-    //     &Signature::Invoker,
-    //     &0,
-    //     &Identifier::Account(u1.clone()),
-    //     &1000000000,
-    // );
 
     token.with_source_account(&u1).incr_allow(
         &Signature::Invoker,
@@ -287,30 +240,8 @@ fn test_invalid_init() {
     let client = RecurringRevenueContractClient::new(&env, &contract_id);
 
     let id = env.register_stellar_asset_contract(Asset::Native);
-    // let id = env.register_contract_token(&BytesN::from_array(
-    //     &env,
-    //     &[
-    //         78, 52, 121, 202, 209, 66, 106, 25, 193, 181, 10, 91, 46, 213, 58, 244, 217, 115, 23,
-    //         232, 144, 71, 210, 113, 57, 46, 203, 166, 210, 20, 155, 105,
-    //     ],
-    // ));
 
     let token = TokenClient::new(&env, &id);
-    // token.init(
-    //     &Identifier::Account(u1.clone()),
-    //     &token::TokenMetadata {
-    //         name: "USD coin".into_val(&env),
-    //         symbol: "USDC".into_val(&env),
-    //         decimals: 7,
-    //     },
-    // );
-
-    // token.with_source_account(&u1).mint(
-    //     &Signature::Invoker,
-    //     &0,
-    //     &Identifier::Account(u1.clone()),
-    //     &1000000000,
-    // );
 
     token.with_source_account(&u1).incr_allow(
         &Signature::Invoker,
@@ -371,30 +302,8 @@ fn test_invalid_init_withdrawal() {
     let client = RecurringRevenueContractClient::new(&env, &contract_id);
 
     let id = env.register_stellar_asset_contract(Asset::Native);
-    // let id = env.register_contract_token(&BytesN::from_array(
-    //     &env,
-    //     &[
-    //         78, 52, 121, 202, 209, 66, 106, 25, 193, 181, 10, 91, 46, 213, 58, 244, 217, 115, 23,
-    //         232, 144, 71, 210, 113, 57, 46, 203, 166, 210, 20, 155, 105,
-    //     ],
-    // ));
 
     let token = TokenClient::new(&env, &id);
-    // token.init(
-    //     &Identifier::Account(u1.clone()),
-    //     &token::TokenMetadata {
-    //         name: "USD coin".into_val(&env),
-    //         symbol: "USDC".into_val(&env),
-    //         decimals: 7,
-    //     },
-    // );
-
-    // token.with_source_account(&u1).mint(
-    //     &Signature::Invoker,
-    //     &0,
-    //     &Identifier::Account(u1.clone()),
-    //     &1000000000,
-    // );
 
     token.with_source_account(&u1).incr_allow(
         &Signature::Invoker,
