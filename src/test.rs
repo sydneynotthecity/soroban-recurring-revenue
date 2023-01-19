@@ -4,8 +4,11 @@ use super::*;
 
 use soroban_sdk::{
     testutils::{Accounts, Ledger, LedgerInfo},
-    Env, xdr::Asset,
+    xdr::Asset,
+    Env,
 };
+
+use crate::token::Client as TokenClient;
 
 /// The first test function, `test_valid_sequence()`, we test the contract
 /// running in the sequence that is expected: sender approves on the token
@@ -53,7 +56,7 @@ fn test_valid_sequence() {
     // We create a client that can be used for our token contract and we invoke
     // the `init` function. Again, in tests, the values we supply here are
     // inconsequential.
-    let token = token::Client::new(&env, &id);
+    let token = TokenClient::new(&env, &id);
     // token.init(
     //     &Identifier::Account(u1.clone()),
     //     &token::TokenMetadata {
@@ -95,12 +98,9 @@ fn test_valid_sequence() {
     // We invoke the `init` function of the RecurringRevenueContract, providing the
     // starting arguments. These values result in a weekly payment of
     // 10,000,000 stroops, or 10 XLM
-    client.with_source_account(&u1).init(
-        &u2, 
-        &id, 
-        &1669593600, 
-        &10000000, 
-        &(7 * 24 * 60 * 60));
+    client
+        .with_source_account(&u1)
+        .init(&u2, &id, &1669593600, &10000000, &(7 * 24 * 60 * 60));
 
     // We set new ledger state to simulate time passing. Here, we have increased
     // the timestamp by one second.
@@ -184,7 +184,7 @@ fn test_invalid_sequence() {
     //     ],
     // ));
 
-    let token = token::Client::new(&env, &id);
+    let token = TokenClient::new(&env, &id);
     // token.init(
     //     &Identifier::Account(u1.clone()),
     //     &token::TokenMetadata {
@@ -240,7 +240,10 @@ fn test_invalid_sequence() {
     });
 
     client.withdraw();
-    assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000 * 2);
+    assert_eq!(
+        token.balance(&Identifier::Account(u2.clone())),
+        10000000 * 2
+    );
 
     // Ok, stop here! This time, for our third `withdraw` invocation, we are
     // only adding 20 seconds to the previous invocation. Since we've set up for
@@ -292,7 +295,7 @@ fn test_invalid_init() {
     //     ],
     // ));
 
-    let token = token::Client::new(&env, &id);
+    let token = TokenClient::new(&env, &id);
     // token.init(
     //     &Identifier::Account(u1.clone()),
     //     &token::TokenMetadata {
@@ -330,11 +333,11 @@ fn test_invalid_init() {
     // shut. Also, dividing by zero is impossible. So, that's an important
     // consideration, too.
     client.with_source_account(&u1).init(
-        &u2,        // our `receiver` account
-        &id,        // our token contract id
+        &u2,         // our `receiver` account
+        &id,         // our token contract id
         &1669593600, // start epoch for the payments
-        &10000000,    // payment amount of 10XLM
-        &0,         // 0 withdraw per second (why would you even do this?)
+        &10000000,   // payment amount of 10XLM
+        &0,          // 0 withdraw per second (why would you even do this?)
     );
 
     // Again, there's no need for an assertion here, since this invocation
@@ -376,7 +379,7 @@ fn test_invalid_init_withdrawal() {
     //     ],
     // ));
 
-    let token = token::Client::new(&env, &id);
+    let token = TokenClient::new(&env, &id);
     // token.init(
     //     &Identifier::Account(u1.clone()),
     //     &token::TokenMetadata {
@@ -410,11 +413,11 @@ fn test_invalid_init_withdrawal() {
 
     // Notice that the start epoch is much further in the future
     client.with_source_account(&u1).init(
-        &u2, // our `receiver` account
-        &id, // our token contract id
-        &1701129600,  // Future date
-        &10000000, 
-        &(7 * 24 * 60 * 60),  // 1 withdraw per second
+        &u2,         // our `receiver` account
+        &id,         // our token contract id
+        &1701129600, // Future date
+        &10000000,
+        &(7 * 24 * 60 * 60), // 1 withdraw per second
     );
 
     client.withdraw();

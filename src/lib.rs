@@ -5,14 +5,12 @@
 /// familiar with. https://soroban.stellar.org/docs/sdks/rust-auth
 use soroban_auth::{Identifier, Signature};
 use soroban_sdk::{contracterror, contractimpl, contracttype, AccountId, Address, BytesN, Env};
-use soroban_token_spec::{TokenClient};
 
 /// The `contractimport` macro will bring in the contents of the built-in
 /// soroban token contract and generate a module we can use with it.
-// mod token {
-//     // soroban_sdk::contractimport!(file = "/soroban_token_spec.wasm");
-//     soroban_sdk::contractimport!(file="./soroban_token_spec.wasm");
-// }
+mod token {
+    soroban_sdk::contractimport!(file = "./soroban_token_spec.wasm");
+}
 
 /// An `Error` enum is used to meaningfully and concisely share error
 /// information with a contract user.
@@ -36,13 +34,13 @@ pub enum Error {
 #[contracttype]
 #[derive(Clone)]
 pub enum StorageKey {
-    Sender,  // AccountId
+    Sender,     // AccountId
     Receiver,   // AccountId
-    TokenId, // BytesN<32>
+    TokenId,    // BytesN<32>
     StartEpoch, // u64
-    Amount,  // i128
-    Step,    // u64
-    Latest,  // u64
+    Amount,     // i128
+    Step,       // u64
+    Latest,     // u64
 }
 
 pub struct RecurringRevenueContract;
@@ -55,7 +53,7 @@ pub trait RecurringRevenueTrait {
     // contract. It also makes the Soroban CLI usage a bit cleaner and easier.
     fn init(
         e: Env,
-        receiver: AccountId,     // the account receiving the recurring payment
+        receiver: AccountId,  // the account receiving the recurring payment
         token_id: BytesN<32>, // the id of the token being transferred as a payment
         start_epoch: u64,     // the starting time (in UTC seconds) when the first payment begins
         amount: i128,         // the amount paid for each recurring payment
@@ -70,7 +68,7 @@ pub trait RecurringRevenueTrait {
     // is updated. The current amount cannot be the new amount.
     fn fix_amount(
         e: Env,
-        amount: i128,          //the updated amount changed to the recurring payment
+        amount: i128, //the updated amount changed to the recurring payment
     ) -> Result<(), Error>;
 }
 
@@ -167,12 +165,12 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
 
         // Check that the Receiver is allowed to start receiving payments
         let start_epoch: u64 = e.storage().get(&StorageKey::StartEpoch).unwrap().unwrap();
-        if start_epoch > e.ledger().timestamp(){
-            return Err(Error::PrematureFirstWithdraw)
+        if start_epoch > e.ledger().timestamp() {
+            return Err(Error::PrematureFirstWithdraw);
         }
 
         // Some more quick math to make sure the `Latest` withdraw occurred *at
-        // least* `step` seconds ago. 
+        // least* `step` seconds ago.
         let latest: u64 = e.storage().get(&StorageKey::Latest).unwrap().unwrap();
         if latest + step > e.ledger().timestamp() {
             return Err(Error::ReceiverAlreadyWithdrawn);
@@ -196,21 +194,17 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
         // another withdraw has taken place. The astute among you may notice
         // this isn't based off the ledger's `timestamp()`, but rather the
         // latest withdraw. This allows the receiver to "catch up" on any missed
-        // withdrawals. 
+        // withdrawals.
         let new_latest = latest + step;
         e.storage().set(&StorageKey::Latest, &new_latest);
 
         Ok(())
     }
 
-    fn fix_amount(
-        e: Env,
-        amount: i128,
-    ) -> Result<(), Error> {
-
+    fn fix_amount(e: Env, amount: i128) -> Result<(), Error> {
         if amount == 0 {
-            return Err(Error::InvalidArguments)
-        } 
+            return Err(Error::InvalidArguments);
+        }
 
         // Confirm that that contract already exists. You
         // cannot modify a contract that does not exist.
@@ -222,19 +216,18 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
         // Check that the new amount does not match the current set amount.
         let old_amount: i128 = e.storage().get(&StorageKey::Amount).unwrap().unwrap();
         if old_amount == amount {
-            return Err(Error::InvalidArguments)
+            return Err(Error::InvalidArguments);
         }
 
-        // Set the Storage key amount to the new amount, fetch the amount to 
+        // Set the Storage key amount to the new amount, fetch the amount to
         // check that the contract actually updated.
         e.storage().set(&StorageKey::Amount, &amount);
         let updated_amount: i128 = e.storage().get(&StorageKey::Amount).unwrap().unwrap();
-        if updated_amount!=amount {
-            return Err(Error::ContractNotUpdated)
+        if updated_amount != amount {
+            return Err(Error::ContractNotUpdated);
         }
 
         Ok(())
-
     }
 }
 
