@@ -70,6 +70,13 @@ pub trait RecurringRevenueTrait {
         e: Env,
         amount: i128, //the updated amount changed to the recurring payment
     ) -> Result<(), Error>;
+
+    //When `fix_step` is invoked, the cadence at which the payment is 
+    // updated. The current step cannot be the new step.
+    fn fix_step(
+        e: Env,
+        step: u64, // how frequently (in seconds) a withdrawal can be made
+    ) -> Result<(), Error>;
 }
 
 /// When a contract uses "Invoker" authentication, `env.invoker()` returns the
@@ -202,6 +209,19 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
     }
 
     fn fix_amount(e: Env, amount: i128) -> Result<(), Error> {
+        // Check to make sure that no one but the Sender can
+        // update the amount sent from their account.
+        // let sender_address: Address = e.storage().get(&StorageKey::Sender).unwrap().unwrap();
+        // if e.invoker() != sender_address {
+        //     return Err(Error::InvalidAuth) 
+        // }
+        match e.invoker() {
+            Address::Account(account_id) => account_id,
+            Address::Contract(_) => {
+                return Err(Error::InvalidInvoker)
+            }
+        };
+
         if amount == 0 {
             return Err(Error::InvalidArguments);
         }
@@ -229,6 +249,43 @@ impl RecurringRevenueTrait for RecurringRevenueContract {
 
         Ok(())
     }
+
+    fn fix_step(e: Env, step: u64) -> Result<(), Error> {
+
+        match e.invoker() {
+            Address::Account(account_id) => account_id,
+            Address::Contract(_) => {
+                return Err(Error::InvalidInvoker)
+            }
+        };
+
+        if step == 0 {
+            return Err(Error::InvalidArguments);
+        }
+
+        // Confirm that that contract already exists. You
+        // cannot modify a contract that does not exist.
+        let token_key = StorageKey::TokenId;
+        if !e.storage().has(&token_key) {
+            return Err(Error::ContractNotInitialized);
+        }
+
+        // Check that the new amount does not match the current set amount.
+        let old_step: u64 = e.storage().get(&StorageKey::Step).unwrap().unwrap();
+        if old_step == step {
+            return Err(Error::InvalidArguments);
+        }
+
+        // Set the Storage key amount to the new amount, fetch the amount to
+        // check that the contract actually updated.
+        e.storage().set(&StorageKey::Step, &step);
+        let updated_step: u64 = e.storage().get(&StorageKey::Step).unwrap().unwrap();
+        if updated_step != step {
+            return Err(Error::ContractNotUpdated);
+        }
+        Ok(())
+    }
+
 }
 
 mod test;

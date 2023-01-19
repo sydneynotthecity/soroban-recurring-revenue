@@ -106,7 +106,7 @@ fn test_valid_sequence() {
 
     // We invoke `withdraw` again, and check that the `u2` token balance
     // reflects two payment transfers.
-    client.withdraw();
+    client.with_source_account(&u2).withdraw();
     assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000 * 2);
 
     // A third time, we set new ledger state to simulate time passing. Here, we
@@ -275,15 +275,13 @@ fn test_invalid_init() {
     // should fail and respond with `Status(ContractError(7))`.
 }
 
-/// In our final test function, `test_invalid_premature_withdrawal()`, we test to make sure that
+/// This test function, `test_invalid_premature_withdrawal()`, we test to make sure that
 /// the receiver cannot prematurely withdraw funds from the RecurringRevenueContract.
 /// The contract will init() as expected, but the receiver will be unable to withdraw funds
 /// because they are too early!
 #[test]
 #[should_panic(expected = "Status(ContractError(5))")] // We want this test to panic since we are giving an unusable argument.
-fn test_invalid_init_withdrawal() {
-    // Almost everything in this test is identical to the first one. We'll drop
-    // a comment to let you know when things are getting interesting again.
+fn test_invalid_premature_withdrawal() {
     let env = Env::default();
     env.ledger().set(LedgerInfo {
         timestamp: 1669726145,
@@ -331,6 +329,134 @@ fn test_invalid_init_withdrawal() {
 
     client.withdraw();
 
-    // Again, there's no need for an assertion here, since this invocation
-    // should fail and respond with `Status(ContractError(6))`.
+}
+
+// This test, `test_valid_amount_updated` tests the `fix_amount` function.
+// The contract is initialized with one amount and the user account
+// makes an update to the recurring transfer amount. The test validates
+// that the updated value is reflected in the transfer balance. 
+#[test]
+fn test_valid_amount_updated() {
+    let env = Env::default();
+    env.ledger().set(LedgerInfo {
+        timestamp: 1669726145,
+        protocol_version: 1,
+        sequence_number: 10,
+        network_passphrase: Default::default(),
+        base_reserve: 10,
+    });
+
+    let u1 = env.accounts().generate();
+    let u2 = env.accounts().generate_and_create();
+
+    env.accounts().update_balance(&u1, 1_000_000_000);
+
+    let contract_id = env.register_contract(None, RecurringRevenueContract);
+    let client = RecurringRevenueContractClient::new(&env, &contract_id);
+
+    let id = env.register_stellar_asset_contract(Asset::Native);
+
+    let token = TokenClient::new(&env, &id);
+
+    token.with_source_account(&u1).incr_allow(
+        &Signature::Invoker,
+        &0,
+        &Identifier::Contract(contract_id.clone()),
+        &500000000,
+    );
+
+    assert_eq!(
+        token.allowance(
+            &Identifier::Account(u1.clone()),
+            &Identifier::Contract(contract_id),
+        ),
+        500000000
+    );
+
+    client.with_source_account(&u1).init(
+        &u2,         // our `receiver` account
+        &id,         // our token contract id
+        &1601129600, // Start date
+        &10000000,
+        &(7 * 24 * 60 * 60), // 1 withdraw per week
+    );
+
+    // Update the amount to something different
+    client.with_source_account(&u2).fix_amount(&400000000);
+
+    client.withdraw();
+    // The amount transferred should reflect the update
+    assert_eq!(token.balance(&Identifier::Account(u2.clone())), 400000000);
+
+}
+
+// This test, `test_invalid_withdraw_after_change_step`, updates the recurring
+// payment cadence. After changing the step, the user attempts to withdraw
+// without waiting the new time. The test should error with `ReceiverAlreadyWithdrawn`
+#[test]
+#[should_panic(expected = "Status(ContractError(4))")] 
+fn test_invalid_withdraw_after_change_step() {
+
+    let env = Env::default();
+    env.ledger().set(LedgerInfo {
+        timestamp: 1669726145,
+        protocol_version: 1,
+        sequence_number: 10,
+        network_passphrase: Default::default(),
+        base_reserve: 10,
+    });
+
+    let u1 = env.accounts().generate();
+    let u2 = env.accounts().generate_and_create();
+
+    env.accounts().update_balance(&u1, 1_000_000_000);
+
+    let contract_id = env.register_contract(None, RecurringRevenueContract);
+    let client = RecurringRevenueContractClient::new(&env, &contract_id);
+
+    let id = env.register_stellar_asset_contract(Asset::Native);
+
+    let token = TokenClient::new(&env, &id);
+
+    token.with_source_account(&u1).incr_allow(
+        &Signature::Invoker,
+        &0,
+        &Identifier::Contract(contract_id.clone()),
+        &500000000,
+    );
+
+    assert_eq!(
+        token.allowance(
+            &Identifier::Account(u1.clone()),
+            &Identifier::Contract(contract_id),
+        ),
+        500000000
+    );
+
+    client.with_source_account(&u1).init(
+        &u2,         // our `receiver` account
+        &id,         // our token contract id
+        &1669680000, // Past date
+        &10000000,
+        &(7 * 24 * 60 * 60), // 1 withdraw per week
+    );
+
+    client.withdraw();
+    assert_eq!(token.balance(&Identifier::Account(u2.clone())), 10000000);
+
+    // Update the step to only allow monthly withdraws
+    client.with_source_account(&u1).fix_step(&(30 * 24 * 60 * 60));
+
+    // Increment the ledger by a week. In the past scenario, 
+    // this should have allowed the user to withdraw again!
+    env.ledger().set(LedgerInfo {
+        timestamp: 1670371200, // about 8 days in the future
+        protocol_version: 1,
+        sequence_number: 10,
+        network_passphrase: Default::default(),
+        base_reserve: 10,
+    }); 
+
+    client.withdraw();
+
 }
