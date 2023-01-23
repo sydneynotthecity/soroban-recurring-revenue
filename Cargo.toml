@@ -1,5 +1,5 @@
 [package]
-name = "soroban-asset-interop-contract"
+name = "soroban-recurring-revenue"
 version = "0.0.0"
 edition = "2021"
 publish = false
@@ -7,10 +7,27 @@ publish = false
 [lib]
 crate-type = ["cdylib"]
 
+[features]
+testutils = ["soroban-sdk/testutils", "soroban-auth/testutils"]
+
 [dependencies]
-soroban-sdk = { workspace = true }
-soroban-auth = { workspace = true }
+soroban-sdk = { git = "https://github.com/stellar/rs-soroban-sdk", rev = "6d82b5e8830fb2579aaef9fc95322ea267eae6c4" }
+soroban-auth = { git = "https://github.com/stellar/rs-soroban-sdk", rev = "6d82b5e8830fb2579aaef9fc95322ea267eae6c4" }
 
 [dev_dependencies]
-soroban-sdk = { workspace = true, features = ["testutils"] }
-soroban-auth = { workspace = true, features = ["testutils"] }
+soroban-sdk = { git = "https://github.com/stellar/rs-soroban-sdk", rev = "6d82b5e8830fb2579aaef9fc95322ea267eae6c4", features = ["testutils"] }
+soroban-auth = { git = "https://github.com/stellar/rs-soroban-sdk", rev = "6d82b5e8830fb2579aaef9fc95322ea267eae6c4", features = ["testutils"] }
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
+
+[profile.release-with-logs]
+inherits = "release"
+debug-assertions = true
